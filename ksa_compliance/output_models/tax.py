@@ -116,15 +116,16 @@ def create_tax_total(tax_categories: dict) -> dict:
 
 def _get_amounts(tax_category: TaxCategoryByItems) -> frappe._dict:
     taxable_amount = 0
-    tax_amount = 0
     total_discount = 0
     amounts = frappe._dict()
     for row in tax_category.items:
         taxable_amount += row.net_amount
-        tax_amount += row.tax_amount
         total_discount += row.amount - row.net_amount
     amounts.taxable_amount = taxable_amount
-    amounts.tax_amount = tax_amount
+    # Compute tax from taxable_amount * rate instead of summing per-item rounded
+    # tax_amounts to avoid rounding discrepancies that cause ZATCA BR-CO-14 failures
+    tax_percent = tax_category.tax_category.percent or 0
+    amounts.tax_amount = round(taxable_amount * tax_percent / 100, 2)
     amounts.total_discount = total_discount
 
     return amounts
